@@ -11,7 +11,7 @@ class Ellipsis {
     }
 
     setTeamInfo(object) {
-      this.steamInfo = object;
+      this.teamInfo = object;
       return this.teamInfo;
     }
 

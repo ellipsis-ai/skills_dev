@@ -10,8 +10,14 @@ ellipsis.setAccessTokens({
   adRollApp: ""
 });
 ellipsis.setTeamInfo({
-  timeZone: "America/Log_Angeles"
+  timeZone: "America/Los_Angeles"
 });
+
+// -----------------------------------------------------------------------------
+// Fake Action inputs here:
+// -----------------------------------------------------------------------------
+const dateRange = "asdasdasdas";
+const advertasibleEID = "I7ORHTOOXJGB3CH3PN46Z6";
 
 
 // -----------------------------------------------------------------------------
@@ -76,22 +82,41 @@ const validateAdvertasibleEIDPromise = (advertasibleEID, graphQLClient) => {
 }
 
 const validateDateRange = (dateRange) => {
-  if (dateRange.start < dateRange.end) {
-    return true;
-  } else {
-    return false;
+
+  if (!dateRange) {
+    return {
+      value: dateRange,
+      errors: ["Date range is invalid"]
+    }
   }
+
+  var errors = [];
+  if (!dateRange.start) {
+    errors.push("start date is not defined");
+  }
+  if (!dateRange.end){
+    errors.push("end date is not defined");
+  }
+  if (dateRange.start && dateRange.end && (dateRange.start > dateRange.end) ) {
+    errors.push("Start date cannot be greater then end date");
+  }
+  if (errors.length > 0) {
+    return {
+      value: dateRange,
+      errors: errors
+    }
+  }
+  return { value: dateRange }
 }
 
 const validateInputsPromise = (inputs, options) => {
   return validateAdvertasibleEIDPromise(inputs.advertasibleEID, options.graphQLClient)
            .then((result) => {
              const dateRangeValidation = validateDateRange(inputs.dateRange);
-             const validationResult = {
+             return {
                advertasibleEID: result,
                dateRange: dateRangeValidation
              }
-             return validationResult;
            });
 }
 
@@ -99,10 +124,10 @@ const validateInputsPromise = (inputs, options) => {
 // array of csv records.
 const extractAMReportRecords = (campaigns) => {
   var records = [];
-  campaigns.map( c => {
-    for (let adGroup of c.adgroups) {
-      for (let ad of adGroup.ads) {
-        for (let m of ad.metrics.byDate) {
+  campaigns.forEach( c => {
+    c.adgroups.forEach((adGroup) => {
+      adGroup.ads.forEach((ad) => {
+        ad.metrics.byDate.forEach((m) => {
           records.push(
             [
               m.date,
@@ -124,9 +149,9 @@ const extractAMReportRecords = (campaigns) => {
               m.clickRevenue || ""
             ].join()
           );
-        }
-      }
-    }
+        });
+      });
+    });
   });
   return records;
 }
@@ -218,11 +243,6 @@ const buildGraphQLClient = (apiKey, oauth2Token) => {
 }
 
 
-// Fake Action inputs here:
-const dateRange = "wtd";
-const advertasibleEID = "I7ORHTOOXJGB3CH3PN46Z6";
-
-
 // -----------------------------------------------------------------------------
 //   Main begins Here
 // -----------------------------------------------------------------------------
@@ -241,9 +261,9 @@ validateAdRollAPIisReacheable(client)
   .then((result) => {
     if (result.errors) {
       ellipsis.error(
-        "Cannot reach the AdRoll API. Maybe it is offline. "
-        + " Here is the error I am getting:"
-        + JSON.stringify(result.errors)
+        "Cannot reach the AdRoll API. Maybe it is offline. " +
+        " Here is the error I am getting:" +
+        JSON.stringify(result.errors)
       );
     }
     return validateInputsPromise(inputs, options)
@@ -251,24 +271,22 @@ validateAdRollAPIisReacheable(client)
   .then( (result) => {
     if (result.advertasibleEID.errors) {
       ellipsis.error(
-        "The advertasibleEID '"+ advertasibleEID +"' is invalid. "
-        + " We got the following error from the AdRoll API when validating the advertasibleEID:"
-        + JSON.stringify(result.advertasibleEID.errors)
+        "The advertasibleEID '"+ advertasibleEID +"' is invalid. " +
+        " We got the following error from the AdRoll API when validating the advertasibleEID:" +
+        JSON.stringify(result.advertasibleEID.errors)
       );
     } else if (result.dateRange.errors) {
       ellipsis.error("The date range " + dateRange + " is invalid. Please fix it and try again");
+    } else {
+      return getReportRecordsPromise(inputs, client);
     }
-  })
-  // Get the report date from the AdRoll API
-  .then( () => {
-    return getReportRecordsPromise(inputs, client);
   })
   // Creates a CSV file to send to the user
   .then(result => {
     if (result.errors) {
       ellipsis.error(
-        "Getting data from the AdRoll API failed. Here is what I got back: "
-        + JSON.stringify(result.errors)
+        "Getting data from the AdRoll API failed. Here is what I got back: "+
+        JSON.stringify(result.errors)
       );
     }
     const reportType = "AM";
