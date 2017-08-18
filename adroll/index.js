@@ -16,7 +16,7 @@ ellipsis.setTeamInfo({
 // -----------------------------------------------------------------------------
 // Fake Action inputs here:
 // -----------------------------------------------------------------------------
-const dateRange = "asdasdasdas";
+const dateRange = "wtd";
 const advertasibleEID = "I7ORHTOOXJGB3CH3PN46Z6";
 
 
@@ -30,22 +30,16 @@ const Q = require('q');
 const validateAdRollAPIisReacheable = (graphQLClient) => {
   const query = `query { organization { current { name } } }`;
   return graphQLClient.request(query)
-            .then((data) => {
-              return {
-                apiOK: true
-              };
-            })
             .catch((response) => {
-                var errors = [];
+                var message = "";
                 if (response.name === 'FetchError') {
-                  // API is unreacheable
-                  errors.push(response.message);
+                  message = "The AdRoll API is unreachable. Here is what I get when I called it: " +
+                            response.message;
                 } else {
-                  errors.concat(response.response.errors);
+                  message = "There is a problem in connecting to the AdRoll API. Here is what I get when I called it: " +
+                            JSON.stringify(response.response.errors);
                 }
-                return {
-                    errors: errors
-                  };
+               throw new Error(message);
             });
 }
 
@@ -61,32 +55,30 @@ const validateAdvertasibleEIDPromise = (advertasibleEID, graphQLClient) => {
     advertasibleEID: advertasibleEID
   };
   return graphQLClient.request(query, variables)
-            .then((data) => {
+            .then((response) => {
               return {
-                value: advertasibleEID
-              };
+
+              }
             })
             .catch((response) => {
-                var errors = [];
+                var message = "";
                 if (response.name === 'FetchError') {
-                  // API is unreacheable
-                  errors.push(response.message);
+                  message = "The AdRoll API is unreachable. Here is what I get when I called it: " +
+                            response.message;
                 } else {
-                  errors.concat(response.response.errors);
+                  message = "The advertasibleEID '"+ advertasibleEID +"' is invalid. " +
+                  " We got the following error from the AdRoll API when validating the advertasibleEID:" +
+                  JSON.stringify(response.response.errors);
                 }
-                return {
-                    value: advertasibleEID,
-                    errors: errors
-                  };
+                throw new Error(message);
             });
 }
 
 const validateDateRange = (dateRange) => {
-
   if (!dateRange) {
     return {
       value: dateRange,
-      errors: ["Date range is invalid"]
+      errors: ["Cannot parse any date range from the input"]
     }
   }
 
@@ -111,11 +103,11 @@ const validateDateRange = (dateRange) => {
 
 const validateInputsPromise = (inputs, options) => {
   return validateAdvertasibleEIDPromise(inputs.advertasibleEID, options.graphQLClient)
-           .then((result) => {
+           .then(() => {
              const dateRangeValidation = validateDateRange(inputs.dateRange);
-             return {
-               advertasibleEID: result,
-               dateRange: dateRangeValidation
+             if (dateRangeValidation.errors) {
+               throw new Error("The date range is invalid. Errors: " +
+                  JSON.stringify(dateRangeValidation.errors.join(',')));
              }
            });
 }
@@ -226,9 +218,9 @@ const getReportRecordsPromise = (inputs, graphQLClient) => {
                };
            })
            .catch((response) => {
-             return {
-               errors: response.response.errors
-             };
+             var message = "Getting data from the AdRoll API failed. Here is what I got back: " +
+                 JSON.stringify(response.response.errors);
+             throw new Error(message);
            });
 }
 
@@ -258,37 +250,14 @@ const options = {
 };
 
 validateAdRollAPIisReacheable(client)
-  .then((result) => {
-    if (result.errors) {
-      ellipsis.error(
-        "Cannot reach the AdRoll API. Maybe it is offline. " +
-        " Here is the error I am getting:" +
-        JSON.stringify(result.errors)
-      );
-    }
+  .then(() => {
     return validateInputsPromise(inputs, options)
   })
-  .then( (result) => {
-    if (result.advertasibleEID.errors) {
-      ellipsis.error(
-        "The advertasibleEID '"+ advertasibleEID +"' is invalid. " +
-        " We got the following error from the AdRoll API when validating the advertasibleEID:" +
-        JSON.stringify(result.advertasibleEID.errors)
-      );
-    } else if (result.dateRange.errors) {
-      ellipsis.error("The date range " + dateRange + " is invalid. Please fix it and try again");
-    } else {
-      return getReportRecordsPromise(inputs, client);
-    }
+  .then(() => {
+    return getReportRecordsPromise(inputs, client);
   })
   // Creates a CSV file to send to the user
-  .then(result => {
-    if (result.errors) {
-      ellipsis.error(
-        "Getting data from the AdRoll API failed. Here is what I got back: "+
-        JSON.stringify(result.errors)
-      );
-    }
+  .then((result) => {
     const reportType = "AM";
     const start = inputs.dateRange.start.toISOString().slice(0,10);
     const end = inputs.dateRange.end.toISOString().slice(0,10);
@@ -299,4 +268,7 @@ validateAdRollAPIisReacheable(client)
       filename: filename
     }];
     ellipsis.success("Here is your report", { files: files });
+})
+.catch((error) => {
+   ellipsis.error(error.message);
 });
