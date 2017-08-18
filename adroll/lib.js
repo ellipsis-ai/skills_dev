@@ -1,4 +1,4 @@
-const AdrollError = require('./adroll_error);
+const AdrollError = require('./adroll_error');
 const graphqlRequest = require('graphql-request');
 const Q = require('q');
 
