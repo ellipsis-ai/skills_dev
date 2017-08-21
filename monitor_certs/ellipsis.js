@@ -1,12 +1,36 @@
+var AWS = require('aws-sdk');
+
 class Ellipsis {
     constructor() {
       this.env = {};
       this.teamInfo = {};
       this.accessTokens = {};
+      this.AWS = undefined;
     }
 
     setEnv(newEnv) {
       this.env = newEnv;
+
+      if (this.AWS === undefined || this.AWS === null) {
+        this.AWS = AWS;
+      }
+
+      if (newEnv.AWS_ACCESS_KEY && newEnv.AWS_SECRET_KEY && newEnv.AWS_REGION) {
+        AWS.config.update({
+          accessKeyId: newEnv.AWS_ACCESS_KEY,
+          secretAccessKey: newEnv.AWS_SECRET_KEY,
+          region: newEnv.AWS_REGION
+        });
+      } else if (newEnv.AWS_PROFILE) {
+        process.env['AWS_PROFILE'] = newEnv.AWS_PROFILE;
+      }
+
+        if (newEnv.AWS_REGION) {
+        AWS.config.update({
+          region: newEnv.AWS_REGION
+        });
+      }
+
       return this.env;
     }
 
