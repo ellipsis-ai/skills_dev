@@ -2,7 +2,7 @@
 
 var AWS = require('aws-sdk');
 const Q = require('q');
-const AwsHelperError = require('./aws_helper_error');
+const AwsHelperError = require('./ellipsis_aws_helper_error');
 const moment = require('moment-timezone');
 
 class AwsHelper {
@@ -124,12 +124,7 @@ class AwsHelper {
                   ea.valid_to_string_local = dateM.tz(this.userTimeZone).format(dateFormat);
                   return ea;
                 });
-                const sorted = refined.sort((a, b) => {
-                  if (moment(a.valid_to) > moment.utc(b.valid_to)) return 1;
-                  else if (moment(a.valid_to) < moment.utc(b.valid_to)) return -1;
-                  else return 0;
-                });
-                return sorted;
+                return refined.sort((a, b) => a.valid_to-b.valid_to);;
               });
   }
 

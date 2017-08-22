@@ -50,13 +50,21 @@ class Ellipsis {
       if (options) {
         console.log(JSON.stringify(options));
       }
+      console.log("--------------- Success ---------------");
       process.exit(0);
     }
 
     error(object){
       console.log("--------------- Error ---------------");
       console.log(object);
+      console.log("--------------- Error ---------------");
       process.exit(-1);
+    }
+
+    noResponse() {
+      console.log("--------------- No Response ---------------");
+      console.log("--------------- No Response ---------------");
+      process.exit(0);
     }
 }
 

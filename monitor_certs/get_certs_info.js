@@ -23,30 +23,34 @@ const AwsApiError = require('./ellipsis_aws_helper_error')
 const AwsHelper = require('./ellipsis_aws_helper');
 const CertsFetcher = require('./ellipsis_certs_fetcher');
 
-function decideRightMessage(certs) {
+function buildExpirationGroups(certs) {
   var adesso = moment.utc();
-  var messages = {
+  var groups = {
     total: certs.length,
-    total_expired: 0,
-    // this week
-    critical: [],
-    // this month
-    warning: [],
-    // in 2 months
-    info:[],
-    // noops
-    noops: []
+    expired: [],
+    expirings_in_more_then_12_months: [],
+    expirings_4_12_months: [],
+    expiring_2_3_months: [],
+    expiring_16_30_days: [],
+    expiring_8_15_days: [],
+    expiring_2_7_days: [],
+    expiring_tomorrow: [],
+    expiring_today: []
   };
   certs.map((c) => {
-      if (c.is_expired) messages.total_expired = messages.total_expired + 1;
-      else if (c.valid_to < moment.utc().add(7, 'd')) messages.critical.push(c);
-      else if (c.valid_to < moment.utc().add(1, 'M')) messages.warning.push(c);
-      else if (c.valid_to < moment.utc().add(2, 'M')) messages.info.push(c);
+      if (c.is_expired) groups.expired.push(c);
+      else if (c.valid_to < moment.utc().endOf('day')) groups.expiring_today.push(c);
+      else if (c.valid_to < moment.utc().add(1, 'd')) groups.expiring_tomorrow.push(c);
+      else if (c.valid_to < moment.utc().add(7, 'd')) groups.expiring_2_7_days.push(c);
+      else if (c.valid_to < moment.utc().add(15, 'd')) groups.expiring_8_15_days.push(c);
+      else if (c.valid_to < moment.utc().add(1, 'M')) groups.expiring_16_30_days.push(c);
+      else if (c.valid_to < moment.utc().add(3, 'M')) groups.expiring_2_3_months.push(c);
+      else if (c.valid_to < moment.utc().add(12, 'M')) groups.expirings_4_12_months.push(c);
       else {
-        messages.noops.push(c);
+        groups.expirings_in_more_then_12_months.push(c);
       };
     });
-  return messages;
+  return groups;
 }
 
 const urls = [
@@ -56,13 +60,12 @@ const urls = [
   "mn.co"
 ];
 
+
 const awsHelper = new AwsHelper({
   AWS: ellipsis.AWS,
   userTimeZone: ellipsis.teamInfo.timeZone
 });
-const certsFetcher = new CertsFetcher({
-  userTimeZone: ellipsis.teamInfo.timeZone
-});
+const certsFetcher = new CertsFetcher();
 
 awsHelper.validateAccessToApi()
 .then((result) => {
@@ -70,14 +73,10 @@ awsHelper.validateAccessToApi()
 })
 .then((certs) => {
   const flattened = [].concat.apply([], certs);
-  const sorted = flattened.sort((a, b) => a.valid_to - b.valid_to);
-  console.log(sorted.map((a)=> [a.valid_to, a.source]));
-  const messages = decideRightMessage(sorted);
-  if (messages.critical.length > 0 || messages.warning.length > 0 || messages.info.length > 0) {
-    ellipsis.success(messages);
-  } else {
-    ellipsis.noResponse();
-  }
+  return buildExpirationGroups(flattened);
+})
+.then((certs) => {
+  ellipsis.success(certs);
 })
 .catch((err) => {
   ellipsis.error(err);
