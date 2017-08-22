@@ -17,8 +17,8 @@ ellipsis.setTeamInfo({
 
 "use strict";
 
-const Q = require('q');
 var moment = require('moment');
+
 const AwsApiError = require('./ellipsis_aws_helper_error')
 const AwsHelper = require('./ellipsis_aws_helper');
 const CertsFetcher = require('./ellipsis_certs_fetcher');
@@ -64,14 +64,19 @@ const certsFetcher = new CertsFetcher({
   userTimeZone: ellipsis.teamInfo.timeZone
 });
 
+if (!awsHelper.validateAwsRegion(ellipsis.env.AWS_REGION)) {
+  if (ellipsis.env.AWS_REGION) ellipsis.error(`Unknown region '${ellipsis.env.AWS_REGION}'`);
+  else ellipsis.error(`AWS_REGION is not set.`);
+}
+
 awsHelper.validateAccessToApi()
 .then((result) => {
-  return Q.all([awsHelper.certsFromAWS(), certsFetcher.getReducedCertsForUrls(urls)])
+  return Promise.all([awsHelper.certsFromAWS(), certsFetcher.getReducedCertsForUrls(urls)])
 })
 .then((certs) => {
   const flattened = [].concat.apply([], certs);
   const sorted = flattened.sort((a, b) => a.valid_to - b.valid_to);
-  console.log(sorted.map((a)=> [a.valid_to, a.source]));
+  console.log(sorted.map((a) => [a.valid_to, a.source]));
   const messages = decideRightMessage(sorted);
   if (messages.critical.length > 0 || messages.warning.length > 0 || messages.info.length > 0) {
     ellipsis.success(messages);

@@ -1,7 +1,6 @@
 "use strict";
 
 var https = require('https');
-const Q = require('q');
 var moment = require('moment');
 
 function isEmpty(object) {
@@ -14,7 +13,7 @@ function isEmpty(object) {
 
 class CertsFetcher {
 
-  constructor(options) {
+  constructor(options={}) {
     this.userTimeZone = options.userTimeZone || "UTC";
   }
 
@@ -46,11 +45,11 @@ class CertsFetcher {
   };
 
   getCertsForUrls(urls) {
-     return Q.all(urls.map((url) => this.getCert(url)));
+     return Promise.all(urls.map((url) => this.getCert(url)));
   }
 
   getReducedCertsForUrls(urls) {
-    return Q.all(urls.map((url) => this.getCert(url)))
+    return Promise.all(urls.map((url) => this.getCert(url)))
               .then((certs) => {
                 return certs.map((cert) => {
                   const validToM = moment.utc(cert.valid_to, "MMM D HH:mm:ss YYYY");
@@ -63,7 +62,7 @@ class CertsFetcher {
                     domains: cert.subjectaltname.split(',').map((ea) => ea.trim().slice(4)),
                     serial_number: cert.serialNumber,
                     is_expired: validToM < moment.utc(),
-                    source: `HTTPS request to ${cert.url}`,
+                    source: `HTTPS/${cert.url}`,
                     valid_to_string_utc: validToM.format(dateFormat),
                     valid_to_string_local: validToM.tz(this.userTimeZone).format(dateFormat)
                   };

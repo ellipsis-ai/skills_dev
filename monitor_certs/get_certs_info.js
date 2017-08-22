@@ -17,8 +17,8 @@ ellipsis.setTeamInfo({
 
 "use strict";
 
-const Q = require('q');
 var moment = require('moment');
+
 const AwsApiError = require('./ellipsis_aws_helper_error')
 const AwsHelper = require('./ellipsis_aws_helper');
 const CertsFetcher = require('./ellipsis_certs_fetcher');
@@ -65,11 +65,13 @@ const awsHelper = new AwsHelper({
   AWS: ellipsis.AWS,
   userTimeZone: ellipsis.teamInfo.timeZone
 });
-const certsFetcher = new CertsFetcher();
+const certsFetcher = new CertsFetcher({
+  userTimeZone: ellipsis.teamInfo.timeZone
+});
 
 awsHelper.validateAccessToApi()
 .then((result) => {
-  return Q.all([awsHelper.certsFromAWS(), certsFetcher.getReducedCertsForUrls(urls)])
+  return Promise.all([awsHelper.certsFromAWS(), certsFetcher.getReducedCertsForUrls(urls)])
 })
 .then((certs) => {
   const flattened = [].concat.apply([], certs);
