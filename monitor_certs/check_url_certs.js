@@ -71,7 +71,10 @@ function get(url) {
   });
 }
 
-get("www.ellipsis.ai")
+get("ownit.com")
 .then((cert) => {
   console.log(cert);
+})
+.catch((error) => {
+  console.log(error);
 })

@@ -11,6 +11,7 @@
   "dependencies": {
     "dateformat": "2.0.0",
     "moment": "2.18.1",
+    "moment-timezone": "0.5.13",
     "q": "1.5.0"
   }
 }
